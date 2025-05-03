@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const forms = document.querySelectorAll('form');
     forms.forEach(form => {
         form.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent default form submission
             const requiredFields = form.querySelectorAll('[required]');
             let isValid = true;
             
@@ -41,8 +42,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             
-            if (!isValid) {
-                event.preventDefault();
+            if (isValid) {
+                // Get form action and handle navigation
+                const formAction = form.getAttribute('action');
+                
+                // Store form data in localStorage for demo purposes
+                const formData = {};
+                new FormData(form).forEach((value, key) => {
+                    formData[key] = value;
+                });
+                localStorage.setItem('userFormData', JSON.stringify(formData));
+                
+                // Check if this is a registration or login form
+                if (form.querySelector('button[type="submit"]').textContent.includes('Register') || 
+                    window.location.pathname.includes('login.html')) {
+                    // Simulate successful registration/login
+                    localStorage.setItem('isLoggedIn', 'true');
+                    
+                    // Navigate to dashboard
+                    window.location.href = 'dashboard.html';
+                } else {
+                    // For other forms, just navigate to the form action
+                    window.location.href = formAction;
+                }
             }
         });
     });
@@ -83,6 +105,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const now = new Date();
             clockElement.textContent = now.toLocaleTimeString();
         }, 1000);
+    }
+
+    // Check if logged in on restricted pages
+    const restrictedPages = ['dashboard.html', 'check_in.html', 'check_out.html', 'admin.html'];
+    const currentPage = window.location.pathname.split('/').pop();
+    
+    if (restrictedPages.includes(currentPage) && localStorage.getItem('isLoggedIn') !== 'true') {
+        // Redirect to login page if not logged in
+        window.location.href = 'login.html';
     }
 });
 

@@ -9,46 +9,41 @@
 <body>
     <header class="header">
         <div class="container">
-            <a href="{{ url_for('dashboard') }}" class="logo">ParkEase</a>
+            <a href="dashboard.html" class="logo">ParkEase</a>
             <ul class="nav-links">
-                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                <li><a href="{{ url_for('check_in') }}">Check In</a></li>
-                <li><a href="{{ url_for('admin') }}">Admin</a></li>
-                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="check_in.html">Check In</a></li>
+                <li><a href="admin.html">Admin</a></li>
+                <li><a href="index.html">Logout</a></li>
             </ul>
         </div>
     </header>
 
     <div class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        <!-- Alert messages -->
+        <div class="alert alert-info">
+            Welcome to the admin dashboard.
+        </div>
 
         <h1>Admin Dashboard</h1>
-        <p>Current time: <span id="current-time"></span></p>
+        <p>Current time: <span id="current-time">12:30:45 PM</span></p>
         
         <div class="dashboard-grid">
             <div class="stats-card">
                 <h3>Total Parking Slots</h3>
-                <div class="number">{{ slots|length }}</div>
+                <div class="number">20</div>
             </div>
             <div class="stats-card">
                 <h3>Available Slots</h3>
-                <div class="number">{{ slots|selectattr('status', 'equalto', 'available')|list|length }}</div>
+                <div class="number">14</div>
             </div>
             <div class="stats-card">
                 <h3>Occupied Slots</h3>
-                <div class="number">{{ slots|selectattr('status', 'equalto', 'occupied')|list|length }}</div>
+                <div class="number">6</div>
             </div>
             <div class="stats-card">
                 <h3>Active Vehicles</h3>
-                <div class="number">{{ active_vehicles|length }}</div>
+                <div class="number">6</div>
             </div>
         </div>
         
@@ -58,11 +53,26 @@
             </div>
             <div class="card-body">
                 <div id="parking-grid" class="parking-grid">
-                    {% for slot in slots %}
-                    <div id="slot-{{ slot.id }}" class="parking-slot slot-{{ slot.status }}" data-status="{{ slot.status }}">
-                        {{ slot.slot_number }}
-                    </div>
-                    {% endfor %}
+                    <div id="slot-1" class="parking-slot slot-available" data-status="available">A01</div>
+                    <div id="slot-2" class="parking-slot slot-available" data-status="available">A02</div>
+                    <div id="slot-3" class="parking-slot slot-occupied" data-status="occupied">A03</div>
+                    <div id="slot-4" class="parking-slot slot-occupied" data-status="occupied">A04</div>
+                    <div id="slot-5" class="parking-slot slot-available" data-status="available">A05</div>
+                    <div id="slot-6" class="parking-slot slot-available" data-status="available">B01</div>
+                    <div id="slot-7" class="parking-slot slot-occupied" data-status="occupied">B02</div>
+                    <div id="slot-8" class="parking-slot slot-available" data-status="available">B03</div>
+                    <div id="slot-9" class="parking-slot slot-available" data-status="available">B04</div>
+                    <div id="slot-10" class="parking-slot slot-occupied" data-status="occupied">B05</div>
+                    <div id="slot-11" class="parking-slot slot-available" data-status="available">C01</div>
+                    <div id="slot-12" class="parking-slot slot-available" data-status="available">C02</div>
+                    <div id="slot-13" class="parking-slot slot-available" data-status="available">C03</div>
+                    <div id="slot-14" class="parking-slot slot-available" data-status="available">C04</div>
+                    <div id="slot-15" class="parking-slot slot-occupied" data-status="occupied">C05</div>
+                    <div id="slot-16" class="parking-slot slot-available" data-status="available">D01</div>
+                    <div id="slot-17" class="parking-slot slot-available" data-status="available">D02</div>
+                    <div id="slot-18" class="parking-slot slot-occupied" data-status="occupied">D03</div>
+                    <div id="slot-19" class="parking-slot slot-available" data-status="available">D04</div>
+                    <div id="slot-20" class="parking-slot slot-available" data-status="available">D05</div>
                 </div>
             </div>
         </div>
@@ -72,7 +82,7 @@
                 <h2>Add Parking Slots</h2>
             </div>
             <div class="card-body">
-                <form action="{{ url_for('add_slots') }}" method="post" class="form-inline">
+                <form action="admin.html" method="post" class="form-inline">
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                         <div>
                             <label for="prefix">Prefix</label>
@@ -100,7 +110,6 @@
                 <h2>Active Vehicles</h2>
             </div>
             <div class="card-body">
-                {% if active_vehicles %}
                 <table class="table">
                     <thead>
                         <tr>
@@ -112,24 +121,54 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for vehicle in active_vehicles %}
                         <tr>
-                            <td>{{ vehicle.license_plate }}</td>
-                            <td>{{ vehicle.vehicle_type }}</td>
-                            <td>{{ vehicle.user_name }}</td>
-                            <td>{{ vehicle.slot_number }}</td>
-                            <td>{{ vehicle.check_in_time }}</td>
+                            <td>ABC123</td>
+                            <td>Car</td>
+                            <td>John Smith</td>
+                            <td>A03</td>
+                            <td>2023-07-25 09:30:00</td>
                         </tr>
-                        {% endfor %}
+                        <tr>
+                            <td>DEF456</td>
+                            <td>SUV</td>
+                            <td>Sarah Johnson</td>
+                            <td>A04</td>
+                            <td>2023-07-25 10:15:00</td>
+                        </tr>
+                        <tr>
+                            <td>GHI789</td>
+                            <td>Motorcycle</td>
+                            <td>Michael Brown</td>
+                            <td>B02</td>
+                            <td>2023-07-25 11:45:00</td>
+                        </tr>
+                        <tr>
+                            <td>JKL012</td>
+                            <td>Car</td>
+                            <td>Lisa Williams</td>
+                            <td>B05</td>
+                            <td>2023-07-25 12:30:00</td>
+                        </tr>
+                        <tr>
+                            <td>MNO345</td>
+                            <td>Van</td>
+                            <td>Robert Jones</td>
+                            <td>C05</td>
+                            <td>2023-07-25 13:10:00</td>
+                        </tr>
+                        <tr>
+                            <td>PQR678</td>
+                            <td>Truck</td>
+                            <td>Jennifer Davis</td>
+                            <td>D03</td>
+                            <td>2023-07-25 14:25:00</td>
+                        </tr>
                     </tbody>
                 </table>
-                {% else %}
-                <p>No active vehicles at the moment.</p>
-                {% endif %}
             </div>
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="/static/js/main.js"></script>
 </body>
 </html>

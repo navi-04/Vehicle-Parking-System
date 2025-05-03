@@ -9,28 +9,21 @@
 <body>
     <header class="header">
         <div class="container">
-            <a href="{{ url_for('dashboard') }}" class="logo">ParkEase</a>
+            <a href="dashboard.html" class="logo">ParkEase</a>
             <ul class="nav-links">
-                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                <li><a href="{{ url_for('check_in') }}">Check In</a></li>
-                {% if session.get('is_admin') %}
-                <li><a href="{{ url_for('admin') }}">Admin</a></li>
-                {% endif %}
-                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="check_in.html">Check In</a></li>
+                <li><a href="admin.html">Admin</a></li>
+                <li><a href="index.html">Logout</a></li>
             </ul>
         </div>
     </header>
 
     <div class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        <!-- Alert messages -->
+        <div class="alert alert-warning">
+            Please confirm vehicle checkout.
+        </div>
 
         <div class="form-container">
             <h2 class="form-title">Check Out Vehicle</h2>
@@ -38,34 +31,34 @@
             <div class="card" style="margin-bottom: 20px;">
                 <div class="card-body">
                     <h3>Vehicle Details</h3>
-                    <p><strong>License Plate:</strong> {{ vehicle.license_plate }}</p>
-                    <p><strong>Vehicle Type:</strong> {{ vehicle.vehicle_type }}</p>
-                    <p><strong>Parking Slot:</strong> {{ vehicle.slot_number }}</p>
-                    <p><strong>Check-In Time:</strong> {{ vehicle.check_in_time }}</p>
-                    <input type="hidden" id="check-in-time" value="{{ vehicle.check_in_time }}">
+                    <p><strong>License Plate:</strong> ABC123</p>
+                    <p><strong>Vehicle Type:</strong> Car</p>
+                    <p><strong>Parking Slot:</strong> A01</p>
+                    <p><strong>Check-In Time:</strong> 2023-07-25 09:30:00</p>
+                    <input type="hidden" id="check-in-time" value="2023-07-25 09:30:00">
                     
                     <hr>
                     
                     <h3>Fee Calculation</h3>
                     <p>Rate: $2.00 per hour (minimum 1 hour)</p>
-                    <p>Estimated Fee: <strong id="fee-preview">Calculating...</strong></p>
+                    <p>Estimated Fee: <strong id="fee-preview">$6.00</strong></p>
                     <button type="button" onclick="calculateFeePreview()" class="btn">Refresh Estimate</button>
                 </div>
             </div>
             
-            <form action="{{ url_for('check_out', vehicle_id=vehicle.id) }}" method="post">
+            <form action="dashboard.html" method="post">
                 <div class="form-group">
                     <p>Are you sure you want to check out this vehicle?</p>
                 </div>
                 <div class="form-group">
                     <button type="submit" class="btn btn-warning">Check Out Vehicle</button>
-                    <a href="{{ url_for('dashboard') }}" class="btn" style="margin-left: 10px;">Cancel</a>
+                    <a href="dashboard.html" class="btn" style="margin-left: 10px;">Cancel</a>
                 </div>
             </form>
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="/static/js/main.js"></script>
     <script>
         // Calculate fee preview on page load
         document.addEventListener('DOMContentLoaded', calculateFeePreview);

@@ -9,40 +9,32 @@
 <body>
     <header class="header">
         <div class="container">
-            <a href="{{ url_for('dashboard') }}" class="logo">ParkEase</a>
+            <a href="dashboard.html" class="logo">ParkEase</a>
             <ul class="nav-links">
-                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-                <li><a href="{{ url_for('check_in') }}">Check In</a></li>
-                {% if session.get('is_admin') %}
-                <li><a href="{{ url_for('admin') }}">Admin</a></li>
-                {% endif %}
-                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="check_in.html">Check In</a></li>
+                <li><a href="admin.html">Admin</a></li>
+                <li><a href="index.html">Logout</a></li>
             </ul>
         </div>
     </header>
 
     <div class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+        <!-- Alert messages -->
+        <div class="alert alert-success">
+            You have successfully logged in!
+        </div>
 
-        <h1>Welcome, {{ session.username }}!</h1>
-        <p>Current time: <span id="current-time"></span></p>
+        <h1>Welcome, John!</h1>
+        <p>Current time: <span id="current-time">12:30:45 PM</span></p>
         
         <div class="card">
             <div class="card-header">
                 <h2>Your Vehicles</h2>
             </div>
             <div class="card-body">
-                <a href="{{ url_for('check_in') }}" class="btn btn-success" style="margin-bottom: 15px;">Check In New Vehicle</a>
+                <a href="check_in.html" class="btn btn-success" style="margin-bottom: 15px;">Check In New Vehicle</a>
                 
-                {% if vehicles %}
                 <table class="table">
                     <thead>
                         <tr>
@@ -57,37 +49,38 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for vehicle in vehicles %}
                         <tr>
-                            <td>{{ vehicle.license_plate }}</td>
-                            <td>{{ vehicle.vehicle_type }}</td>
+                            <td>ABC123</td>
+                            <td>Car</td>
                             <td>
-                                {% if vehicle.check_out_time %}
-                                <span style="color: var(--success-color);">Checked Out</span>
-                                {% else %}
                                 <span style="color: var(--primary-color);">Parked</span>
-                                {% endif %}
                             </td>
-                            <td>{{ vehicle.slot_number or 'N/A' }}</td>
-                            <td>{{ vehicle.check_in_time }}</td>
-                            <td>{{ vehicle.check_out_time or 'N/A' }}</td>
-                            <td>${{ "%.2f"|format(vehicle.fee) }}</td>
+                            <td>A01</td>
+                            <td>2023-07-25 09:30:00</td>
+                            <td>N/A</td>
+                            <td>$0.00</td>
                             <td>
-                                {% if not vehicle.check_out_time %}
-                                <a href="{{ url_for('check_out', vehicle_id=vehicle.id) }}" class="btn btn-warning">Check Out</a>
-                                {% endif %}
+                                <a href="check_out.html?id=1" class="btn btn-warning">Check Out</a>
                             </td>
                         </tr>
-                        {% endfor %}
+                        <tr>
+                            <td>XYZ789</td>
+                            <td>SUV</td>
+                            <td>
+                                <span style="color: var(--success-color);">Checked Out</span>
+                            </td>
+                            <td>B03</td>
+                            <td>2023-07-24 14:15:00</td>
+                            <td>2023-07-24 17:45:00</td>
+                            <td>$8.00</td>
+                            <td></td>
+                        </tr>
                     </tbody>
                 </table>
-                {% else %}
-                <p>You don't have any vehicles registered yet.</p>
-                {% endif %}
             </div>
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="/static/js/main.js"></script>
 </body>
 </html>
