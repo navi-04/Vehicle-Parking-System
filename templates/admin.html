@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Parking System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <a href="{{ url_for('dashboard') }}" class="logo">ParkEase</a>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('check_in') }}">Check In</a></li>
+                <li><a href="{{ url_for('admin') }}">Admin</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </div>
+    </header>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <h1>Admin Dashboard</h1>
+        <p>Current time: <span id="current-time"></span></p>
+        
+        <div class="dashboard-grid">
+            <div class="stats-card">
+                <h3>Total Parking Slots</h3>
+                <div class="number">{{ slots|length }}</div>
+            </div>
+            <div class="stats-card">
+                <h3>Available Slots</h3>
+                <div class="number">{{ slots|selectattr('status', 'equalto', 'available')|list|length }}</div>
+            </div>
+            <div class="stats-card">
+                <h3>Occupied Slots</h3>
+                <div class="number">{{ slots|selectattr('status', 'equalto', 'occupied')|list|length }}</div>
+            </div>
+            <div class="stats-card">
+                <h3>Active Vehicles</h3>
+                <div class="number">{{ active_vehicles|length }}</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>Parking Slots</h2>
+            </div>
+            <div class="card-body">
+                <div id="parking-grid" class="parking-grid">
+                    {% for slot in slots %}
+                    <div id="slot-{{ slot.id }}" class="parking-slot slot-{{ slot.status }}" data-status="{{ slot.status }}">
+                        {{ slot.slot_number }}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>Add Parking Slots</h2>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('add_slots') }}" method="post" class="form-inline">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div>
+                            <label for="prefix">Prefix</label>
+                            <input type="text" id="prefix" name="prefix" class="form-control" value="P" required style="width: 60px;">
+                        </div>
+                        <div>
+                            <label for="start_num">Start Number</label>
+                            <input type="number" id="start_num" name="start_num" class="form-control" value="1" min="1" required style="width: 80px;">
+                        </div>
+                        <div>
+                            <label for="count">Count</label>
+                            <input type="number" id="count" name="count" class="form-control" value="5" min="1" max="100" required style="width: 80px;">
+                        </div>
+                        <div>
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn">Add Slots</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>Active Vehicles</h2>
+            </div>
+            <div class="card-body">
+                {% if active_vehicles %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>License Plate</th>
+                            <th>Type</th>
+                            <th>User</th>
+                            <th>Parking Slot</th>
+                            <th>Check-In Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for vehicle in active_vehicles %}
+                        <tr>
+                            <td>{{ vehicle.license_plate }}</td>
+                            <td>{{ vehicle.vehicle_type }}</td>
+                            <td>{{ vehicle.user_name }}</td>
+                            <td>{{ vehicle.slot_number }}</td>
+                            <td>{{ vehicle.check_in_time }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p>No active vehicles at the moment.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
