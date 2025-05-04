@@ -9,10 +9,10 @@
 <body>
     <header class="header">
         <div class="container">
-            <a href="index.html" class="logo">ParkEase</a>
+            <a href="/" class="logo">ParkEase</a>
             <ul class="nav-links">
-                <li><a href="index.html">Home</a></li>
-                <li><a href="register.html">Register</a></li>
+                <li><a href="/">Home</a></li>
+                <li><a href="/register">Register</a></li>
             </ul>
         </div>
     </header>
@@ -23,25 +23,78 @@
             Please login to access your dashboard.
         </div>
 
-        <div class="form-container">
-            <h2 class="form-title">Login to Your Account</h2>
-            <form action="dashboard.html" method="post">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <button type="submit" class="btn">Login</button>
-                </div>
-                <p>Don't have an account? <a href="register.html">Register here</a></p>
-            </form>
-        </div>
+        <h1>Login</h1>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                <button type="submit">Login</button>
+            </div>
+            <p>Don't have an account? <a href="/register">Register</a></p>
+        </form>
+        <div id="message"></div>
     </div>
 
-    <script src="/static/js/main.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading message
+            document.getElementById('message').textContent = 'Logging in...';
+            document.getElementById('message').style.color = 'blue';
+            
+            // Collect form data
+            const formData = {
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            };
+            
+            console.log('Sending login request:', formData);
+            
+            // Send data to server
+            fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+                credentials: 'include' // Important for cookies/session
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Login response:', data);
+                if (data.success) {
+                    document.getElementById('message').textContent = 'Login successful! Redirecting...';
+                    document.getElementById('message').style.color = 'green';
+                    
+                    // Redirect based on user role
+                    setTimeout(() => {
+                        if (data.is_admin) {
+                            window.location.href = '/admin';
+                        } else {
+                            window.location.href = '/booking';
+                        }
+                    }, 2000);
+                } else {
+                    document.getElementById('message').textContent = data.message || 'Invalid credentials';
+                    document.getElementById('message').style.color = 'red';
+                }
+            })
+            .catch(error => {
+                document.getElementById('message').textContent = 'An error occurred. Please try again later.';
+                document.getElementById('message').style.color = 'red';
+                console.error('Error:', error);
+            });
+        });
+    </script>
 </body>
 </html>

@@ -3,172 +3,340 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Parking System</title>
+    <title>Admin - Vehicle Parking System</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <a href="dashboard.html" class="logo">ParkEase</a>
-            <ul class="nav-links">
-                <li><a href="dashboard.html">Dashboard</a></li>
-                <li><a href="check_in.html">Check In</a></li>
-                <li><a href="admin.html">Admin</a></li>
-                <li><a href="index.html">Logout</a></li>
-            </ul>
-        </div>
-    </header>
-
     <div class="container">
-        <!-- Alert messages -->
-        <div class="alert alert-info">
-            Welcome to the admin dashboard.
-        </div>
-
         <h1>Admin Dashboard</h1>
-        <p>Current time: <span id="current-time">12:30:45 PM</span></p>
         
-        <div class="dashboard-grid">
-            <div class="stats-card">
-                <h3>Total Parking Slots</h3>
-                <div class="number">20</div>
-            </div>
-            <div class="stats-card">
-                <h3>Available Slots</h3>
-                <div class="number">14</div>
-            </div>
-            <div class="stats-card">
-                <h3>Occupied Slots</h3>
-                <div class="number">6</div>
-            </div>
-            <div class="stats-card">
-                <h3>Active Vehicles</h3>
-                <div class="number">6</div>
-            </div>
+        <div class="tabs">
+            <button class="tab-button active" onclick="showTab('bookings')">Current Bookings</button>
+            <button class="tab-button" onclick="showTab('slots')">Parking Slots</button>
+            <button class="tab-button" onclick="showTab('history')">Booking History</button>
+            <button class="tab-button" onclick="showTab('users')">User Management</button>
         </div>
         
-        <div class="card">
-            <div class="card-header">
-                <h2>Parking Slots</h2>
-            </div>
-            <div class="card-body">
-                <div id="parking-grid" class="parking-grid">
-                    <div id="slot-1" class="parking-slot slot-available" data-status="available">A01</div>
-                    <div id="slot-2" class="parking-slot slot-available" data-status="available">A02</div>
-                    <div id="slot-3" class="parking-slot slot-occupied" data-status="occupied">A03</div>
-                    <div id="slot-4" class="parking-slot slot-occupied" data-status="occupied">A04</div>
-                    <div id="slot-5" class="parking-slot slot-available" data-status="available">A05</div>
-                    <div id="slot-6" class="parking-slot slot-available" data-status="available">B01</div>
-                    <div id="slot-7" class="parking-slot slot-occupied" data-status="occupied">B02</div>
-                    <div id="slot-8" class="parking-slot slot-available" data-status="available">B03</div>
-                    <div id="slot-9" class="parking-slot slot-available" data-status="available">B04</div>
-                    <div id="slot-10" class="parking-slot slot-occupied" data-status="occupied">B05</div>
-                    <div id="slot-11" class="parking-slot slot-available" data-status="available">C01</div>
-                    <div id="slot-12" class="parking-slot slot-available" data-status="available">C02</div>
-                    <div id="slot-13" class="parking-slot slot-available" data-status="available">C03</div>
-                    <div id="slot-14" class="parking-slot slot-available" data-status="available">C04</div>
-                    <div id="slot-15" class="parking-slot slot-occupied" data-status="occupied">C05</div>
-                    <div id="slot-16" class="parking-slot slot-available" data-status="available">D01</div>
-                    <div id="slot-17" class="parking-slot slot-available" data-status="available">D02</div>
-                    <div id="slot-18" class="parking-slot slot-occupied" data-status="occupied">D03</div>
-                    <div id="slot-19" class="parking-slot slot-available" data-status="available">D04</div>
-                    <div id="slot-20" class="parking-slot slot-available" data-status="available">D05</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <h2>Add Parking Slots</h2>
-            </div>
-            <div class="card-body">
-                <form action="admin.html" method="post" class="form-inline">
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <div>
-                            <label for="prefix">Prefix</label>
-                            <input type="text" id="prefix" name="prefix" class="form-control" value="P" required style="width: 60px;">
-                        </div>
-                        <div>
-                            <label for="start_num">Start Number</label>
-                            <input type="number" id="start_num" name="start_num" class="form-control" value="1" min="1" required style="width: 80px;">
-                        </div>
-                        <div>
-                            <label for="count">Count</label>
-                            <input type="number" id="count" name="count" class="form-control" value="5" min="1" max="100" required style="width: 80px;">
-                        </div>
-                        <div>
-                            <label>&nbsp;</label>
-                            <button type="submit" class="btn">Add Slots</button>
-                        </div>
+        <div id="bookings" class="tab-content active">
+            <h2>Current Bookings</h2>
+            <table id="current-bookings">
+                <thead>
+                    <tr>
+                        <th>Booking ID</th>
+                        <th>User</th>
+                        <th>Vehicle</th>
+                        <th>Slot</th>
+                        <th>Entry Time</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Will be populated by JavaScript -->
+                </tbody>
+            </table>
+            <div id="checkout-form" style="display: none;">
+                <h3>Complete Booking</h3>
+                <form id="completeBookingForm">
+                    <input type="hidden" id="booking-id">
+                    <div class="form-group">
+                        <label for="amount">Amount (₹)</label>
+                        <input type="number" id="amount" name="amount" required>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit">Complete Checkout</button>
+                        <button type="button" onclick="cancelCheckout()">Cancel</button>
                     </div>
                 </form>
             </div>
         </div>
         
-        <div class="card">
-            <div class="card-header">
-                <h2>Active Vehicles</h2>
+        <div id="slots" class="tab-content">
+            <h2>Parking Slots</h2>
+            <div class="form-group">
+                <button onclick="addNewSlot()">Add New Slot</button>
             </div>
-            <div class="card-body">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>License Plate</th>
-                            <th>Type</th>
-                            <th>User</th>
-                            <th>Parking Slot</th>
-                            <th>Check-In Time</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>ABC123</td>
-                            <td>Car</td>
-                            <td>John Smith</td>
-                            <td>A03</td>
-                            <td>2023-07-25 09:30:00</td>
-                        </tr>
-                        <tr>
-                            <td>DEF456</td>
-                            <td>SUV</td>
-                            <td>Sarah Johnson</td>
-                            <td>A04</td>
-                            <td>2023-07-25 10:15:00</td>
-                        </tr>
-                        <tr>
-                            <td>GHI789</td>
-                            <td>Motorcycle</td>
-                            <td>Michael Brown</td>
-                            <td>B02</td>
-                            <td>2023-07-25 11:45:00</td>
-                        </tr>
-                        <tr>
-                            <td>JKL012</td>
-                            <td>Car</td>
-                            <td>Lisa Williams</td>
-                            <td>B05</td>
-                            <td>2023-07-25 12:30:00</td>
-                        </tr>
-                        <tr>
-                            <td>MNO345</td>
-                            <td>Van</td>
-                            <td>Robert Jones</td>
-                            <td>C05</td>
-                            <td>2023-07-25 13:10:00</td>
-                        </tr>
-                        <tr>
-                            <td>PQR678</td>
-                            <td>Truck</td>
-                            <td>Jennifer Davis</td>
-                            <td>D03</td>
-                            <td>2023-07-25 14:25:00</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <div id="add-slot-form" style="display: none;">
+                <form id="slotForm">
+                    <div class="form-group">
+                        <label for="slot-number">Slot Number</label>
+                        <input type="text" id="slot-number" name="slot-number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="slot-type">Slot Type</label>
+                        <select id="slot-type" name="slot-type" required>
+                            <option value="car">Car</option>
+                            <option value="bike">Bike</option>
+                            <option value="truck">Truck</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <button type="submit">Add Slot</button>
+                        <button type="button" onclick="cancelAddSlot()">Cancel</button>
+                    </div>
+                </form>
             </div>
+            <table id="parking-slots">
+                <thead>
+                    <tr>
+                        <th>Slot ID</th>
+                        <th>Slot Number</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="history" class="tab-content">
+            <h2>Booking History</h2>
+            <table id="booking-history">
+                <thead>
+                    <tr>
+                        <th>Booking ID</th>
+                        <th>User</th>
+                        <th>Vehicle</th>
+                        <th>Slot</th>
+                        <th>Entry Time</th>
+                        <th>Exit Time</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="users" class="tab-content">
+            <h2>User Management</h2>
+            <table id="users-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Phone</th>
+                        <th>Registered On</th>
+                        <th>Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Will be populated by JavaScript -->
+                </tbody>
+            </table>
         </div>
     </div>
 
-    <script src="/static/js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            showTab('bookings');
+            loadCurrentBookings();
+            loadParkingSlots();
+            loadBookingHistory();
+            loadUsers();
+        });
+        
+        function showTab(tabName) {
+            const tabs = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            const tabButtons = document.querySelectorAll('.tab-button');
+            tabButtons.forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            document.getElementById(tabName).classList.add('active');
+            document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
+        }
+        
+        function loadCurrentBookings() {
+            fetch('/api/admin/current-bookings')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector('#current-bookings tbody');
+                tbody.innerHTML = '';
+                
+                data.bookings.forEach(booking => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${booking.id}</td>
+                        <td>${booking.user_name}</td>
+                        <td>${booking.vehicle_number}</td>
+                        <td>${booking.slot_number}</td>
+                        <td>${new Date(booking.entry_time).toLocaleString()}</td>
+                        <td><button onclick="initiateCheckout(${booking.id})">Checkout</button></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading current bookings:', error);
+            });
+        }
+        
+        function loadParkingSlots() {
+            fetch('/api/admin/parking-slots')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector('#parking-slots tbody');
+                tbody.innerHTML = '';
+                
+                data.slots.forEach(slot => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${slot.id}</td>
+                        <td>${slot.slot_number}</td>
+                        <td>${slot.slot_type}</td>
+                        <td>${slot.is_occupied ? 'Occupied' : 'Available'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading parking slots:', error);
+            });
+        }
+        
+        function loadBookingHistory() {
+            fetch('/api/admin/booking-history')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector('#booking-history tbody');
+                tbody.innerHTML = '';
+                
+                data.bookings.forEach(booking => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${booking.id}</td>
+                        <td>${booking.user_name}</td>
+                        <td>${booking.vehicle_number}</td>
+                        <td>${booking.slot_number}</td>
+                        <td>${new Date(booking.entry_time).toLocaleString()}</td>
+                        <td>${booking.exit_time ? new Date(booking.exit_time).toLocaleString() : '-'}</td>
+                        <td>${booking.amount ? `₹${booking.amount}` : '-'}</td>
+                        <td>${booking.payment_status}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading booking history:', error);
+            });
+        }
+        
+        function loadUsers() {
+            fetch('/api/admin/users')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.querySelector('#users-table tbody');
+                tbody.innerHTML = '';
+                
+                data.users.forEach(user => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${user.id}</td>
+                        <td>${user.name}</td>
+                        <td>${user.email}</td>
+                        <td>${user.phone}</td>
+                        <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                        <td>${user.is_admin ? 'Admin' : 'User'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading users:', error);
+            });
+        }
+        
+        function initiateCheckout(bookingId) {
+            document.getElementById('booking-id').value = bookingId;
+            document.getElementById('checkout-form').style.display = 'block';
+        }
+        
+        function cancelCheckout() {
+            document.getElementById('checkout-form').style.display = 'none';
+            document.getElementById('completeBookingForm').reset();
+        }
+        
+        document.getElementById('completeBookingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                booking_id: document.getElementById('booking-id').value,
+                amount: document.getElementById('amount').value
+            };
+            
+            fetch('/api/complete-booking', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    cancelCheckout();
+                    loadCurrentBookings();
+                    loadParkingSlots();
+                    loadBookingHistory();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                alert('An error occurred. Please try again later.');
+                console.error('Error:', error);
+            });
+        });
+        
+        function addNewSlot() {
+            document.getElementById('add-slot-form').style.display = 'block';
+        }
+        
+        function cancelAddSlot() {
+            document.getElementById('add-slot-form').style.display = 'none';
+            document.getElementById('slotForm').reset();
+        }
+        
+        document.getElementById('slotForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                slot_number: document.getElementById('slot-number').value,
+                slot_type: document.getElementById('slot-type').value
+            };
+            
+            fetch('/api/admin/add-slot', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    cancelAddSlot();
+                    loadParkingSlots();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                alert('An error occurred. Please try again later.');
+                console.error('Error:', error);
+            });
+        });
+    </script>
 </body>
 </html>

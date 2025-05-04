@@ -25,15 +25,7 @@
 
         <div class="form-container">
             <h2 class="form-title">Register New Account</h2>
-            <form action="dashboard.html" method="post">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" class="form-control" required>
-                </div>
+            <form id="registerForm">
                 <div class="form-group">
                     <label for="name">Full Name</label>
                     <input type="text" id="name" name="name" class="form-control" required>
@@ -43,17 +35,75 @@
                     <input type="email" id="email" name="email" class="form-control" required>
                 </div>
                 <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Confirm Password</label>
+                    <input type="password" id="confirm-password" name="confirm-password" class="form-control" required>
+                </div>
+                <div class="form-group">
                     <label for="phone">Phone Number</label>
-                    <input type="tel" id="phone" name="phone" class="form-control">
+                    <input type="tel" id="phone" name="phone" class="form-control" required>
                 </div>
                 <div class="form-group">
                     <button type="submit" class="btn btn-success">Register</button>
                 </div>
-                <p>Already have an account? <a href="login.html">Login here</a></p>
+                <p>Already have an account? <a href="/login">Login</a></p>
             </form>
+            <div id="message"></div>
         </div>
     </div>
 
-    <script src="/static/js/main.js"></script>
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validate password match
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            
+            if (password !== confirmPassword) {
+                document.getElementById('message').textContent = 'Passwords do not match';
+                document.getElementById('message').style.color = 'red';
+                return;
+            }
+            
+            // Collect form data
+            const formData = {
+                name: document.getElementById('name').value,
+                email: document.getElementById('email').value,
+                password: password,
+                phone: document.getElementById('phone').value
+            };
+            
+            // Send data to server
+            fetch('/api/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('message').textContent = 'Registration successful! Redirecting to login...';
+                    document.getElementById('message').style.color = 'green';
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 2000);
+                } else {
+                    document.getElementById('message').textContent = data.message;
+                    document.getElementById('message').style.color = 'red';
+                }
+            })
+            .catch(error => {
+                document.getElementById('message').textContent = 'An error occurred. Please try again later.';
+                document.getElementById('message').style.color = 'red';
+                console.error('Error:', error);
+            });
+        });
+    </script>
 </body>
 </html>
