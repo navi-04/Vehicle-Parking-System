@@ -379,4 +379,5 @@ if __name__ == '__main__':
         db.create_all()
         create_default_admin()
     app.run(host='0.0.0.0', port=5000,debug=True)
+    # app.run(debug=True)
 
