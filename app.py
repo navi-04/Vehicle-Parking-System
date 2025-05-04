@@ -1,333 +1,381 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-import sqlite3
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session
+from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
 import os
 from datetime import datetime
-import time
-import secrets
-from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
+CORS(app)  # Enable CORS for all routes
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///parking_system.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.secret_key = 'vehicle_parking_system_secret_key'
 
-# Database setup
-def create_tables():
-    conn = sqlite3.connect('parking_system.db')
-    cursor = conn.cursor()
-    
-    # Users table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        phone TEXT,
-        is_admin INTEGER DEFAULT 0
-    )
-    ''')
-    
-    # Parking slots table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS parking_slots (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        slot_number TEXT UNIQUE NOT NULL,
-        status TEXT NOT NULL DEFAULT 'available',
-        vehicle_id INTEGER DEFAULT NULL
-    )
-    ''')
-    
-    # Vehicles table
-    cursor.execute('''
-    CREATE TABLE IF NOT EXISTS vehicles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        license_plate TEXT NOT NULL,
-        vehicle_type TEXT NOT NULL,
-        check_in_time TIMESTAMP DEFAULT NULL,
-        check_out_time TIMESTAMP DEFAULT NULL,
-        parking_slot_id INTEGER DEFAULT NULL,
-        fee REAL DEFAULT 0.0,
-        FOREIGN KEY (user_id) REFERENCES users(id),
-        FOREIGN KEY (parking_slot_id) REFERENCES parking_slots(id)
-    )
-    ''')
-    
-    # Add default admin user if not exists
-    cursor.execute("SELECT * FROM users WHERE username = 'admin'")
-    if not cursor.fetchone():
-        cursor.execute("INSERT INTO users (username, password, name, email, is_admin) VALUES (?, ?, ?, ?, ?)",
-                     ('admin', 'admin123', 'Administrator', 'admin@parking.com', 1))
-    
-    # Add some initial parking slots if none exist
-    cursor.execute("SELECT COUNT(*) FROM parking_slots")
-    if cursor.fetchone()[0] == 0:
-        for i in range(1, 21):
-            cursor.execute("INSERT INTO parking_slots (slot_number, status) VALUES (?, ?)",
-                         (f'A{i:02d}', 'available'))
-    
-    conn.commit()
-    conn.close()
+db = SQLAlchemy(app)
 
-# Login required decorator
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
-            flash('Please login first', 'danger')
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
+# Database Models
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(100), nullable=False)
+    phone = db.Column(db.String(20), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
-# Admin required decorator
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'is_admin' not in session or session['is_admin'] != 1:
-            flash('Admin access required', 'danger')
-            return redirect(url_for('index'))
-        return f(*args, **kwargs)
-    return decorated_function
+class Vehicle(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    vehicle_number = db.Column(db.String(20), nullable=False)
+    vehicle_type = db.Column(db.String(50), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
 
-# Routes
+class ParkingSlot(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    slot_number = db.Column(db.String(10), nullable=False)
+    slot_type = db.Column(db.String(50), nullable=False)  # car, bike, etc.
+    is_occupied = db.Column(db.Boolean, default=False)
+
+class Booking(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicle.id'), nullable=False)
+    slot_id = db.Column(db.Integer, db.ForeignKey('parking_slot.id'), nullable=False)
+    entry_time = db.Column(db.DateTime, default=datetime.now)
+    exit_time = db.Column(db.DateTime, nullable=True)
+    amount = db.Column(db.Float, nullable=True)
+    payment_status = db.Column(db.String(20), default='Pending')
+
+# Routes for HTML templates
 @app.route('/')
 def index():
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
     return render_template('index.html')
 
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        name = request.form['name']
-        email = request.form['email']
-        phone = request.form['phone']
-        
-        conn = sqlite3.connect('parking_system.db')
-        cursor = conn.cursor()
-        
-        try:
-            cursor.execute("INSERT INTO users (username, password, name, email, phone) VALUES (?, ?, ?, ?, ?)",
-                         (username, password, name, email, phone))
-            conn.commit()
-            flash('Registration successful! Please login.', 'success')
-            return redirect(url_for('login'))
-        except sqlite3.IntegrityError:
-            flash('Username or email already exists', 'danger')
-        finally:
-            conn.close()
-            
-    return render_template('register.html')
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        
-        conn = sqlite3.connect('parking_system.db')
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, username, is_admin FROM users WHERE username = ? AND password = ?", (username, password))
-        user = cursor.fetchone()
-        conn.close()
-        
-        if user:
-            session['user_id'] = user[0]
-            session['username'] = user[1]
-            session['is_admin'] = user[2]
-            flash('Login successful!', 'success')
-            return redirect(url_for('dashboard'))
-        else:
-            flash('Invalid username or password', 'danger')
-    
+@app.route('/login')
+def login_page():
     return render_template('login.html')
 
-@app.route('/logout')
-def logout():
-    session.clear()
-    flash('You have been logged out', 'info')
-    return redirect(url_for('index'))
+@app.route('/register')
+def register_page():
+    return render_template('register.html')
 
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    conn = sqlite3.connect('parking_system.db')
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    
-    # Get user's vehicles
-    cursor.execute("""
-        SELECT v.*, p.slot_number 
-        FROM vehicles v 
-        LEFT JOIN parking_slots p ON v.parking_slot_id = p.id 
-        WHERE v.user_id = ? 
-        ORDER BY v.check_in_time DESC
-    """, (session['user_id'],))
-    vehicles = cursor.fetchall()
-    
-    conn.close()
-    return render_template('dashboard.html', vehicles=vehicles)
+@app.route('/booking')
+def booking_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
+    return render_template('booking.html')
 
-@app.route('/check_in', methods=['GET', 'POST'])
-@login_required
-def check_in():
-    if request.method == 'POST':
-        license_plate = request.form['license_plate']
-        vehicle_type = request.form['vehicle_type']
-        
-        conn = sqlite3.connect('parking_system.db')
-        cursor = conn.cursor()
-        
-        # Check if vehicle is already parked
-        cursor.execute("SELECT id FROM vehicles WHERE license_plate = ? AND check_out_time IS NULL", (license_plate,))
-        if cursor.fetchone():
-            flash('This vehicle is already parked', 'danger')
-            conn.close()
-            return redirect(url_for('check_in'))
-        
-        # Find available parking slot
-        cursor.execute("SELECT id FROM parking_slots WHERE status = 'available' LIMIT 1")
-        slot = cursor.fetchone()
-        
-        if not slot:
-            flash('No parking slots available', 'danger')
-            conn.close()
-            return redirect(url_for('dashboard'))
-        
-        slot_id = slot[0]
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        # Add vehicle and update slot status
-        cursor.execute("""
-            INSERT INTO vehicles (user_id, license_plate, vehicle_type, check_in_time, parking_slot_id) 
-            VALUES (?, ?, ?, ?, ?)
-        """, (session['user_id'], license_plate, vehicle_type, current_time, slot_id))
-        
-        vehicle_id = cursor.lastrowid
-        
-        cursor.execute("UPDATE parking_slots SET status = 'occupied', vehicle_id = ? WHERE id = ?", 
-                      (vehicle_id, slot_id))
-        
-        conn.commit()
-        conn.close()
-        
-        flash('Vehicle checked in successfully', 'success')
-        return redirect(url_for('dashboard'))
-        
-    return render_template('check_in.html')
+@app.route('/admin')
+def admin_page():
+    if 'user_id' not in session or not session.get('is_admin'):
+        return redirect(url_for('login_page'))
+    return render_template('admin.html')
 
-@app.route('/check_out/<int:vehicle_id>', methods=['GET', 'POST'])
-@login_required
-def check_out(vehicle_id):
-    conn = sqlite3.connect('parking_system.db')
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+# API Routes for form submissions
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.json
     
-    # Get vehicle info
-    cursor.execute("""
-        SELECT v.*, p.id as slot_id, p.slot_number 
-        FROM vehicles v 
-        JOIN parking_slots p ON v.parking_slot_id = p.id 
-        WHERE v.id = ? AND v.user_id = ?
-    """, (vehicle_id, session['user_id']))
-    vehicle = cursor.fetchone()
+    # Check if email already exists
+    existing_user = User.query.filter_by(email=data['email']).first()
+    if existing_user:
+        return jsonify({'success': False, 'message': 'Email already registered'})
     
-    if not vehicle:
-        conn.close()
-        flash('Vehicle not found or not authorized', 'danger')
-        return redirect(url_for('dashboard'))
+    # Create new user
+    new_user = User(
+        name=data['name'],
+        email=data['email'],
+        password=data['password'],  # In production, hash this password
+        phone=data['phone']
+    )
     
-    if vehicle['check_out_time'] is not None:
-        conn.close()
-        flash('Vehicle already checked out', 'danger')
-        return redirect(url_for('dashboard'))
+    db.session.add(new_user)
+    db.session.commit()
     
-    if request.method == 'POST':
-        check_out_time = datetime.now()
-        check_in_time = datetime.strptime(vehicle['check_in_time'], '%Y-%m-%d %H:%M:%S')
-        
-        # Calculate parking duration in hours
-        duration = (check_out_time - check_in_time).total_seconds() / 3600
-        
-        # Calculate fee (assume $2 per hour, minimum 1 hour)
-        fee = max(1, round(duration)) * 2
-        
-        # Update vehicle record
-        cursor.execute("""
-            UPDATE vehicles 
-            SET check_out_time = ?, fee = ? 
-            WHERE id = ?
-        """, (check_out_time.strftime('%Y-%m-%d %H:%M:%S'), fee, vehicle_id))
-        
-        # Free up parking slot
-        cursor.execute("UPDATE parking_slots SET status = 'available', vehicle_id = NULL WHERE id = ?", 
-                      (vehicle['slot_id'],))
-        
-        conn.commit()
-        conn.close()
-        
-        flash(f'Vehicle checked out successfully. Fee: ${fee:.2f}', 'success')
-        return redirect(url_for('dashboard'))
-    
-    conn.close()
-    return render_template('check_out.html', vehicle=vehicle)
+    return jsonify({'success': True, 'message': 'Registration successful'})
 
-@app.route('/admin', methods=['GET'])
-@login_required
-@admin_required
-def admin():
-    conn = sqlite3.connect('parking_system.db')
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.json
     
-    # Get all parking slots with their status
-    cursor.execute("""
-        SELECT * FROM parking_slots ORDER BY slot_number
-    """)
-    slots = cursor.fetchall()
+    user = User.query.filter_by(email=data['email']).first()
     
-    # Get all active vehicles
-    cursor.execute("""
-        SELECT v.*, u.name as user_name, p.slot_number 
-        FROM vehicles v 
-        JOIN users u ON v.user_id = u.id 
-        JOIN parking_slots p ON v.parking_slot_id = p.id 
-        WHERE v.check_out_time IS NULL
-    """)
-    active_vehicles = cursor.fetchall()
+    if user and user.password == data['password']:  # In production, verify hashed password
+        session['user_id'] = user.id
+        session['is_admin'] = user.is_admin
+        return jsonify({'success': True, 'is_admin': user.is_admin})
     
-    conn.close()
-    return render_template('admin.html', slots=slots, active_vehicles=active_vehicles)
+    return jsonify({'success': False, 'message': 'Invalid credentials'})
 
-@app.route('/admin/add_slots', methods=['POST'])
-@login_required
-@admin_required
-def add_slots():
-    if request.method == 'POST':
-        prefix = request.form['prefix']
-        start_num = int(request.form['start_num'])
-        count = int(request.form['count'])
-        
-        conn = sqlite3.connect('parking_system.db')
-        cursor = conn.cursor()
-        
-        for i in range(start_num, start_num + count):
-            slot_number = f'{prefix}{i:02d}'
-            try:
-                cursor.execute("INSERT INTO parking_slots (slot_number, status) VALUES (?, ?)",
-                             (slot_number, 'available'))
-            except sqlite3.IntegrityError:
-                # Slot number already exists, skip
-                continue
-                
-        conn.commit()
-        conn.close()
-        
-        flash(f'Added {count} parking slots', 'success')
-    return redirect(url_for('admin'))
+@app.route('/api/add-vehicle', methods=['POST'])
+def add_vehicle():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'})
+    
+    data = request.json
+    
+    new_vehicle = Vehicle(
+        user_id=session['user_id'],
+        vehicle_number=data['vehicle_number'],
+        vehicle_type=data['vehicle_type']
+    )
+    
+    db.session.add(new_vehicle)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Vehicle added successfully'})
 
+@app.route('/api/book-slot', methods=['POST'])
+def book_slot():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'})
+    
+    data = request.json
+    
+    # Find available slot
+    available_slot = ParkingSlot.query.filter_by(
+        slot_type=data['vehicle_type'], 
+        is_occupied=False
+    ).first()
+    
+    if not available_slot:
+        return jsonify({'success': False, 'message': 'No slots available'})
+    
+    # Mark slot as occupied
+    available_slot.is_occupied = True
+    
+    # Create booking
+    new_booking = Booking(
+        user_id=session['user_id'],
+        vehicle_id=data['vehicle_id'],
+        slot_id=available_slot.id
+    )
+    
+    db.session.add(new_booking)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True, 
+        'message': 'Booking successful',
+        'slot_number': available_slot.slot_number
+    })
+
+@app.route('/api/complete-booking', methods=['POST'])
+def complete_booking():
+    data = request.json
+    
+    booking = Booking.query.get(data['booking_id'])
+    if not booking:
+        return jsonify({'success': False, 'message': 'Booking not found'})
+    
+    # Update booking
+    booking.exit_time = datetime.now()
+    booking.amount = data['amount']
+    booking.payment_status = 'Paid'
+    
+    # Free up the slot
+    slot = ParkingSlot.query.get(booking.slot_id)
+    slot.is_occupied = False
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Checkout complete'})
+
+# Add these routes to the existing app.py file
+
+@app.route('/api/parking-availability', methods=['GET'])
+def parking_availability():
+    # Count total slots by type
+    car_slots = ParkingSlot.query.filter_by(slot_type='car').count()
+    bike_slots = ParkingSlot.query.filter_by(slot_type='bike').count()
+    truck_slots = ParkingSlot.query.filter_by(slot_type='truck').count()
+    
+    # Count available slots by type
+    available_car = ParkingSlot.query.filter_by(slot_type='car', is_occupied=False).count()
+    available_bike = ParkingSlot.query.filter_by(slot_type='bike', is_occupied=False).count()
+    available_truck = ParkingSlot.query.filter_by(slot_type='truck', is_occupied=False).count()
+    
+    return jsonify({
+        'total': {
+            'car': car_slots,
+            'bike': bike_slots,
+            'truck': truck_slots
+        },
+        'available': {
+            'car': available_car,
+            'bike': available_bike,
+            'truck': available_truck
+        }
+    })
+
+@app.route('/api/user-vehicles', methods=['GET'])
+def get_user_vehicles():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in', 'vehicles': []})
+    
+    vehicles = Vehicle.query.filter_by(user_id=session['user_id']).all()
+    vehicles_data = [{
+        'id': v.id,
+        'vehicle_number': v.vehicle_number,
+        'vehicle_type': v.vehicle_type
+    } for v in vehicles]
+    
+    return jsonify({'success': True, 'vehicles': vehicles_data})
+
+@app.route('/api/vehicle/<int:vehicle_id>', methods=['GET'])
+def get_vehicle(vehicle_id):
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in'})
+    
+    vehicle = Vehicle.query.get(vehicle_id)
+    
+    if not vehicle or vehicle.user_id != session['user_id']:
+        return jsonify({'success': False, 'message': 'Vehicle not found'})
+    
+    return jsonify({
+        'success': True,
+        'id': vehicle.id,
+        'vehicle_number': vehicle.vehicle_number,
+        'vehicle_type': vehicle.vehicle_type
+    })
+
+@app.route('/api/admin/current-bookings', methods=['GET'])
+def admin_current_bookings():
+    if 'user_id' not in session or not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized', 'bookings': []})
+    
+    # Get bookings with no exit time (current bookings)
+    bookings = db.session.query(
+        Booking, User, Vehicle, ParkingSlot
+    ).join(
+        User, User.id == Booking.user_id
+    ).join(
+        Vehicle, Vehicle.id == Booking.vehicle_id
+    ).join(
+        ParkingSlot, ParkingSlot.id == Booking.slot_id
+    ).filter(
+        Booking.exit_time.is_(None)
+    ).all()
+    
+    bookings_data = [{
+        'id': booking.Booking.id,
+        'user_name': booking.User.name,
+        'vehicle_number': booking.Vehicle.vehicle_number,
+        'slot_number': booking.ParkingSlot.slot_number,
+        'entry_time': booking.Booking.entry_time.isoformat()
+    } for booking in bookings]
+    
+    return jsonify({'success': True, 'bookings': bookings_data})
+
+@app.route('/api/admin/parking-slots', methods=['GET'])
+def admin_parking_slots():
+    if 'user_id' not in session or not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized', 'slots': []})
+    
+    slots = ParkingSlot.query.all()
+    slots_data = [{
+        'id': slot.id,
+        'slot_number': slot.slot_number,
+        'slot_type': slot.slot_type,
+        'is_occupied': slot.is_occupied
+    } for slot in slots]
+    
+    return jsonify({'success': True, 'slots': slots_data})
+
+@app.route('/api/admin/booking-history', methods=['GET'])
+def admin_booking_history():
+    if 'user_id' not in session or not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized', 'bookings': []})
+    
+    # Get all completed bookings
+    bookings = db.session.query(
+        Booking, User, Vehicle, ParkingSlot
+    ).join(
+        User, User.id == Booking.user_id
+    ).join(
+        Vehicle, Vehicle.id == Booking.vehicle_id
+    ).join(
+        ParkingSlot, ParkingSlot.id == Booking.slot_id
+    ).filter(
+        Booking.exit_time.isnot(None)
+    ).all()
+    
+    bookings_data = [{
+        'id': booking.Booking.id,
+        'user_name': booking.User.name,
+        'vehicle_number': booking.Vehicle.vehicle_number,
+        'slot_number': booking.ParkingSlot.slot_number,
+        'entry_time': booking.Booking.entry_time.isoformat(),
+        'exit_time': booking.Booking.exit_time.isoformat() if booking.Booking.exit_time else None,
+        'amount': booking.Booking.amount,
+        'payment_status': booking.Booking.payment_status
+    } for booking in bookings]
+    
+    return jsonify({'success': True, 'bookings': bookings_data})
+
+@app.route('/api/admin/users', methods=['GET'])
+def admin_users():
+    if 'user_id' not in session or not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized', 'users': []})
+    
+    users = User.query.all()
+    users_data = [{
+        'id': user.id,
+        'name': user.name,
+        'email': user.email,
+        'phone': user.phone,
+        'is_admin': user.is_admin,
+        'created_at': user.created_at.isoformat()
+    } for user in users]
+    
+    return jsonify({'success': True, 'users': users_data})
+
+@app.route('/api/admin/add-slot', methods=['POST'])
+def admin_add_slot():
+    if 'user_id' not in session or not session.get('is_admin'):
+        return jsonify({'success': False, 'message': 'Unauthorized'})
+    
+    data = request.json
+    
+    # Check if slot number already exists
+    existing_slot = ParkingSlot.query.filter_by(slot_number=data['slot_number']).first()
+    if existing_slot:
+        return jsonify({'success': False, 'message': 'Slot number already exists'})
+    
+    new_slot = ParkingSlot(
+        slot_number=data['slot_number'],
+        slot_type=data['slot_type'],
+        is_occupied=False
+    )
+    
+    db.session.add(new_slot)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Parking slot added successfully'})
+
+# Add this function before "if __name__ == '__main__':" 
+def create_default_admin():
+    # Check if admin exists
+    admin = User.query.filter_by(is_admin=True).first()
+    if not admin:
+        # Create default admin user
+        default_admin = User(
+            name="Admin User",
+            email="admin@parkease.com",
+            password="admin123",  # In production, use a hashed password
+            phone="1234567890",
+            is_admin=True
+        )
+        db.session.add(default_admin)
+        db.session.commit()
+        print("Default admin user created:")
+        print("Email: admin@parkease.com")
+        print("Password: admin123")
+    else:
+        print(f"Admin already exists: {admin.email}")
+
+# Update the main block to call this function
 if __name__ == '__main__':
-    create_tables()
+    with app.app_context():
+        db.create_all()
+        create_default_admin()
     app.run(debug=True)

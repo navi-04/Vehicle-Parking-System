@@ -7,66 +7,73 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <a href="index.html" class="logo">ParkEase</a>
-            <ul class="nav-links">
-                <li><a href="login.html">Login</a></li>
-                <li><a href="register.html">Register</a></li>
-            </ul>
-        </div>
-    </header>
-
-    <section class="hero">
-        <h1>Vehicle Parking System</h1>
-        <p>Efficient parking management for commercial and residential areas</p>
-        <a href="register.html" class="btn btn-success">Get Started</a>
-    </section>
-
     <div class="container">
-        <!-- Alert messages -->
-        <div class="alert alert-success">
-            Welcome to ParkEase Vehicle Parking System!
-        </div>
-        <div class="alert alert-info">
-            Check out our new features for better parking management.
-        </div>
-        <div class="alert alert-warning">
-            Parking slots are filling up quickly. Book yours now!
-        </div>
-        <div class="alert alert-danger">
-            System maintenance scheduled for Sunday, 10 PM - 12 AM.
+        <header>
+            <h1>Vehicle Parking System</h1>
+            <p>Efficient and secure parking management</p>
+        </header>
+
+        <div class="features">
+            <div class="feature">
+                <h2>Easy Registration</h2>
+                <p>Register your vehicle and book parking slots hassle-free</p>
+            </div>
+            <div class="feature">
+                <h2>Real-time Availability</h2>
+                <p>Check parking slot availability in real-time</p>
+            </div>
+            <div class="feature">
+                <h2>Secure Payments</h2>
+                <p>Easy and secure payment process for parking</p>
+            </div>
         </div>
 
-        <section class="features">
-            <h2 style="text-align: center; margin: 40px 0;">Our Features</h2>
-            <div class="dashboard-grid">
-                <div class="stats-card">
-                    <h3>User Registration</h3>
-                    <p>Create your account to manage your vehicles and parking</p>
+        <div class="actions">
+            <a href="/login" class="btn">Login</a>
+            <a href="/register" class="btn">Register</a>
+        </div>
+
+        <div class="availability">
+            <h2>Current Availability</h2>
+            <div id="availability-stats">
+                <div class="stat">
+                    <span>Car Slots</span>
+                    <div id="car-slots">Loading...</div>
                 </div>
-                <div class="stats-card">
-                    <h3>Vehicle Check-In</h3>
-                    <p>Easily check in your vehicles and get assigned a parking slot</p>
+                <div class="stat">
+                    <span>Bike Slots</span>
+                    <div id="bike-slots">Loading...</div>
                 </div>
-                <div class="stats-card">
-                    <h3>Vehicle Check-Out</h3>
-                    <p>Check out your vehicle with automated fee calculation</p>
-                </div>
-                <div class="stats-card">
-                    <h3>Real-Time Status</h3>
-                    <p>Track parking availability and your vehicle status in real-time</p>
+                <div class="stat">
+                    <span>Truck Slots</span>
+                    <div id="truck-slots">Loading...</div>
                 </div>
             </div>
-        </section>
+        </div>
     </div>
 
-    <footer style="background-color: var(--dark-color); color: white; padding: 20px 0; margin-top: 40px; text-align: center;">
-        <div class="container">
-            <p>Vehicle Parking System &copy; 2025</p>
-        </div>
-    </footer>
-
-    <script src="/static/js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Fetch parking availability data
+            fetch('/api/parking-availability')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('car-slots').textContent = 
+                    `${data.available.car} available out of ${data.total.car}`;
+                    
+                document.getElementById('bike-slots').textContent = 
+                    `${data.available.bike} available out of ${data.total.bike}`;
+                    
+                document.getElementById('truck-slots').textContent = 
+                    `${data.available.truck} available out of ${data.total.truck}`;
+            })
+            .catch(error => {
+                console.error('Error fetching availability data:', error);
+                document.getElementById('car-slots').textContent = 'Error loading data';
+                document.getElementById('bike-slots').textContent = 'Error loading data';
+                document.getElementById('truck-slots').textContent = 'Error loading data';
+            });
+        });
+    </script>
 </body>
 </html>

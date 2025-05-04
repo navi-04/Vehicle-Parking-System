@@ -1,0 +1,4 @@
+flask
+flask_sqlalchemy
+flask_cors
+tabulate

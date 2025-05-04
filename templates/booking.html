@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Parking - Vehicle Parking System</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Book Parking Slot</h1>
+        
+        <h2>Register a Vehicle</h2>
+        <form id="vehicleForm">
+            <div class="form-group">
+                <label for="vehicle-number">Vehicle Number</label>
+                <input type="text" id="vehicle-number" name="vehicle-number" required>
+            </div>
+            <div class="form-group">
+                <label for="vehicle-type">Vehicle Type</label>
+                <select id="vehicle-type" name="vehicle-type" required>
+                    <option value="">Select Vehicle Type</option>
+                    <option value="car">Car</option>
+                    <option value="bike">Bike</option>
+                    <option value="truck">Truck</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button type="submit">Add Vehicle</button>
+            </div>
+        </form>
+        <div id="vehicle-message"></div>
+        
+        <hr>
+        
+        <h2>Book a Slot</h2>
+        <form id="bookingForm">
+            <div class="form-group">
+                <label for="booking-vehicle">Select Vehicle</label>
+                <select id="booking-vehicle" name="booking-vehicle" required>
+                    <option value="">Loading vehicles...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <button type="submit">Book Parking</button>
+            </div>
+        </form>
+        <div id="booking-message"></div>
+    </div>
+
+    <script>
+        // Load user vehicles when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadVehicles();
+        });
+        
+        function loadVehicles() {
+            fetch('/api/user-vehicles')
+            .then(response => response.json())
+            .then(data => {
+                const vehicleSelect = document.getElementById('booking-vehicle');
+                vehicleSelect.innerHTML = '';
+                
+                if (data.vehicles.length === 0) {
+                    vehicleSelect.innerHTML = '<option value="">No vehicles registered</option>';
+                    return;
+                }
+                
+                vehicleSelect.innerHTML = '<option value="">Select a vehicle</option>';
+                data.vehicles.forEach(vehicle => {
+                    const option = document.createElement('option');
+                    option.value = vehicle.id;
+                    option.textContent = `${vehicle.vehicle_number} (${vehicle.vehicle_type})`;
+                    vehicleSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading vehicles:', error);
+            });
+        }
+        
+        // Add vehicle form submission
+        document.getElementById('vehicleForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Collect form data
+            const formData = {
+                vehicle_number: document.getElementById('vehicle-number').value,
+                vehicle_type: document.getElementById('vehicle-type').value
+            };
+            
+            // Send data to server
+            fetch('/api/add-vehicle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('vehicle-message').textContent = data.message;
+                    document.getElementById('vehicle-message').style.color = 'green';
+                    document.getElementById('vehicleForm').reset();
+                    
+                    // Reload vehicles list
+                    loadVehicles();
+                } else {
+                    document.getElementById('vehicle-message').textContent = data.message;
+                    document.getElementById('vehicle-message').style.color = 'red';
+                }
+            })
+            .catch(error => {
+                document.getElementById('vehicle-message').textContent = 'An error occurred. Please try again later.';
+                document.getElementById('vehicle-message').style.color = 'red';
+                console.error('Error:', error);
+            });
+        });
+        
+        // Booking form submission
+        document.getElementById('bookingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const vehicleId = document.getElementById('booking-vehicle').value;
+            
+            if (!vehicleId) {
+                document.getElementById('booking-message').textContent = 'Please select a vehicle';
+                document.getElementById('booking-message').style.color = 'red';
+                return;
+            }
+            
+            // Get vehicle type for selected vehicle
+            fetch(`/api/vehicle/${vehicleId}`)
+            .then(response => response.json())
+            .then(vehicleData => {
+                // Book slot with vehicle type
+                return fetch('/api/book-slot', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        vehicle_id: vehicleId,
+                        vehicle_type: vehicleData.vehicle_type
+                    })
+                });
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('booking-message').innerHTML = `
+                        ${data.message}<br>
+                        Your slot number is: <strong>${data.slot_number}</strong>
+                    `;
+                    document.getElementById('booking-message').style.color = 'green';
+                } else {
+                    document.getElementById('booking-message').textContent = data.message;
+                    document.getElementById('booking-message').style.color = 'red';
+                }
+            })
+            .catch(error => {
+                document.getElementById('booking-message').textContent = 'An error occurred. Please try again later.';
+                document.getElementById('booking-message').style.color = 'red';
+                console.error('Error:', error);
+            });
+        });
+    </script>
+</body>
+</html>
