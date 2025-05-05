@@ -9,12 +9,15 @@
 <body>
     <header class="header">
         <div class="container">
-            <a href="dashboard.html" class="logo">ParkEase</a>
+            <a href="/dashboard" class="logo">ParkEase</a>
             <ul class="nav-links">
-                <li><a href="dashboard.html">Dashboard</a></li>
-                <li><a href="check_in.html">Check In</a></li>
-                <li><a href="admin.html">Admin</a></li>
-                <li><a href="index.html">Logout</a></li>
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/check_in">Check In</a></li>
+                <li><a href="/booking">Bookings</a></li>
+                {% if session.get('is_admin') %}
+                <li><a href="/admin">Admin</a></li>
+                {% endif %}
+                <li><a href="/logout">Logout</a></li>
             </ul>
         </div>
     </header>
@@ -31,35 +34,105 @@
             <div class="card" style="margin-bottom: 20px;">
                 <div class="card-body">
                     <h3>Vehicle Details</h3>
-                    <p><strong>License Plate:</strong> ABC123</p>
-                    <p><strong>Vehicle Type:</strong> Car</p>
-                    <p><strong>Parking Slot:</strong> A01</p>
-                    <p><strong>Check-In Time:</strong> 2023-07-25 09:30:00</p>
-                    <input type="hidden" id="check-in-time" value="2023-07-25 09:30:00">
+                    <p><strong>License Plate:</strong> {{ booking.Vehicle.vehicle_number }}</p>
+                    <p><strong>Vehicle Type:</strong> {{ booking.Vehicle.vehicle_type }}</p>
+                    <p><strong>Parking Slot:</strong> {{ booking.ParkingSlot.slot_number }}</p>
+                    <p><strong>Check-In Time:</strong> <span id="check-in-display">{{ booking.Booking.entry_time.strftime('%Y-%m-%d %H:%M:%S') }}</span></p>
+                    <input type="hidden" id="check-in-time" value="{{ booking.Booking.entry_time.isoformat() }}">
+                    <input type="hidden" id="booking-id" value="{{ booking.Booking.id }}">
                     
                     <hr>
                     
                     <h3>Fee Calculation</h3>
-                    <p>Rate: $2.00 per hour (minimum 1 hour)</p>
-                    <p>Estimated Fee: <strong id="fee-preview">$6.00</strong></p>
+                    <p>Rate: ₹50.00 per hour (minimum 1 hour)</p>
+                    <p>Estimated Fee: <strong id="fee-preview">Calculating...</strong></p>
                     <button type="button" onclick="calculateFeePreview()" class="btn">Refresh Estimate</button>
                 </div>
             </div>
             
-            <form action="dashboard.html" method="post">
+            <form id="checkoutForm">
                 <div class="form-group">
                     <p>Are you sure you want to check out this vehicle?</p>
                 </div>
                 <div class="form-group">
                     <button type="submit" class="btn btn-warning">Check Out Vehicle</button>
-                    <a href="dashboard.html" class="btn" style="margin-left: 10px;">Cancel</a>
+                    <a href="/dashboard" class="btn" style="margin-left: 10px;">Cancel</a>
                 </div>
             </form>
+            <div id="message" style="margin-top: 20px;"></div>
         </div>
     </div>
 
-    <script src="/static/js/main.js"></script>
     <script>
+        // Calculate fee preview
+        function calculateFeePreview() {
+            const checkInTime = new Date(document.getElementById('check-in-time').value);
+            const now = new Date();
+            
+            // Calculate hours parked
+            const diffMs = now - checkInTime;
+            const diffHours = Math.ceil(diffMs / (1000 * 60 * 60)); // Round up to nearest hour
+            
+            // Calculate fee (₹50 per hour, minimum 1 hour)
+            const hoursToCharge = Math.max(1, diffHours);
+            const fee = hoursToCharge * 50;
+            
+            // Update display
+            document.getElementById('fee-preview').textContent = `₹${fee.toFixed(2)}`;
+            
+            return fee;
+        }
+        
+        // Handle form submission
+        document.getElementById('checkoutForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const bookingId = document.getElementById('booking-id').value;
+            const amount = calculateFeePreview();
+            
+            fetch('/api/complete-booking', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    booking_id: bookingId,
+                    amount: amount
+                }),
+                credentials: 'include'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('message').innerHTML = `
+                        <div class="alert alert-success">
+                            ${data.message}<br>
+                            Amount paid: <strong>₹${amount.toFixed(2)}</strong><br>
+                            Redirecting to dashboard...
+                        </div>
+                    `;
+                    
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 3000);
+                } else {
+                    document.getElementById('message').innerHTML = `
+                        <div class="alert alert-error">
+                            ${data.message || 'Failed to complete checkout'}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('message').innerHTML = `
+                    <div class="alert alert-error">
+                        An error occurred. Please try again.
+                    </div>
+                `;
+                console.error('Error:', error);
+            });
+        });
+        
         // Calculate fee preview on page load
         document.addEventListener('DOMContentLoaded', calculateFeePreview);
     </script>
