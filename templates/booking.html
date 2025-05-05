@@ -7,8 +7,20 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">ParkEase</a>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/logout">Logout</a></li>
+            </ul>
+        </div>
+    </header>
+
     <div class="container">
         <h1>Book Parking Slot</h1>
+        
+        <div id="status-message"></div>
         
         <h2>Register a Vehicle</h2>
         <form id="vehicleForm">
@@ -46,12 +58,20 @@
             </div>
         </form>
         <div id="booking-message"></div>
+        
+        <hr>
+        
+        <h2>My Current Bookings</h2>
+        <div id="current-bookings">
+            <p>Loading your bookings...</p>
+        </div>
     </div>
 
     <script>
         // Load user vehicles when page loads
         document.addEventListener('DOMContentLoaded', function() {
             loadVehicles();
+            loadCurrentBookings();
         });
         
         function loadVehicles() {
@@ -60,6 +80,12 @@
             .then(data => {
                 const vehicleSelect = document.getElementById('booking-vehicle');
                 vehicleSelect.innerHTML = '';
+                
+                if (!data.success) {
+                    displayStatusMessage(data.message || 'Error loading vehicles', 'error');
+                    vehicleSelect.innerHTML = '<option value="">No vehicles registered</option>';
+                    return;
+                }
                 
                 if (data.vehicles.length === 0) {
                     vehicleSelect.innerHTML = '<option value="">No vehicles registered</option>';
@@ -76,7 +102,62 @@
             })
             .catch(error => {
                 console.error('Error loading vehicles:', error);
+                displayStatusMessage('Error loading vehicles. Please try again.', 'error');
             });
+        }
+        
+        function loadCurrentBookings() {
+            fetch('/api/user-bookings')
+            .then(response => response.json())
+            .then(data => {
+                const bookingsDiv = document.getElementById('current-bookings');
+                
+                if (!data.success) {
+                    bookingsDiv.innerHTML = '<p>Error loading bookings</p>';
+                    return;
+                }
+                
+                if (data.bookings.length === 0) {
+                    bookingsDiv.innerHTML = '<p>You have no active bookings</p>';
+                    return;
+                }
+                
+                let html = '<table class="table">';
+                html += '<thead><tr><th>Vehicle</th><th>Slot Number</th><th>Entry Time</th></tr></thead>';
+                html += '<tbody>';
+                
+                data.bookings.forEach(booking => {
+                    const entryTime = new Date(booking.entry_time).toLocaleString();
+                    html += `
+                        <tr>
+                            <td>${booking.vehicle_number}</td>
+                            <td>${booking.slot_number}</td>
+                            <td>${entryTime}</td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                bookingsDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading bookings:', error);
+                document.getElementById('current-bookings').innerHTML = 
+                    '<p>Error loading bookings. Please refresh the page.</p>';
+            });
+        }
+        
+        // Display status message
+        function displayStatusMessage(message, type = 'info') {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = `alert alert-${type}`;
+            statusDiv.style.display = 'block';
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
         }
         
         // Add vehicle form submission
@@ -95,7 +176,8 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(formData),
+                credentials: 'include'
             })
             .then(response => response.json())
             .then(data => {
@@ -107,7 +189,7 @@
                     // Reload vehicles list
                     loadVehicles();
                 } else {
-                    document.getElementById('vehicle-message').textContent = data.message;
+                    document.getElementById('vehicle-message').textContent = data.message || 'Error adding vehicle';
                     document.getElementById('vehicle-message').style.color = 'red';
                 }
             })
@@ -134,7 +216,11 @@
             fetch(`/api/vehicle/${vehicleId}`)
             .then(response => response.json())
             .then(vehicleData => {
-                // Book slot with vehicle type
+                if (!vehicleData.success) {
+                    throw new Error(vehicleData.message || 'Failed to get vehicle info');
+                }
+                
+                // Book slot with vehicle data
                 return fetch('/api/book-slot', {
                     method: 'POST',
                     headers: {
@@ -143,7 +229,8 @@
                     body: JSON.stringify({
                         vehicle_id: vehicleId,
                         vehicle_type: vehicleData.vehicle_type
-                    })
+                    }),
+                    credentials: 'include'
                 });
             })
             .then(response => response.json())
@@ -154,8 +241,11 @@
                         Your slot number is: <strong>${data.slot_number}</strong>
                     `;
                     document.getElementById('booking-message').style.color = 'green';
+                    
+                    // Reload current bookings
+                    loadCurrentBookings();
                 } else {
-                    document.getElementById('booking-message').textContent = data.message;
+                    document.getElementById('booking-message').textContent = data.message || 'Booking failed';
                     document.getElementById('booking-message').style.color = 'red';
                 }
             })

@@ -45,10 +45,9 @@ header h1 {
 
 /* Header */
 .header {
-    background-color: var(--dark-color);
-    color: white;
-    padding: 20px 0;
-    box-shadow: var(--box-shadow);
+    background-color: #2c3e50;
+    padding: 10px 0;
+    margin-bottom: 20px;
 }
 
 .header .container {
@@ -58,10 +57,10 @@ header h1 {
 }
 
 .logo {
-    font-size: 1.8rem;
-    font-weight: bold;
-    text-decoration: none;
     color: white;
+    font-size: 1.5em;
+    text-decoration: none;
+    font-weight: bold;
 }
 
 .nav-links {
@@ -76,11 +75,10 @@ header h1 {
 .nav-links a {
     color: white;
     text-decoration: none;
-    transition: color 0.3s;
 }
 
 .nav-links a:hover {
-    color: var(--secondary-color);
+    text-decoration: underline;
 }
 
 /* Forms */
@@ -159,6 +157,19 @@ header h1 {
     background: #e67e22;
 }
 
+.btn-sm {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
 /* Cards and Tables */
 .card {
     background: white;
@@ -199,14 +210,16 @@ header h1 {
 
 /* Alerts */
 .alert {
-    padding: 15px;
+    padding: 10px 15px;
     margin-bottom: 20px;
     border-radius: 4px;
+    border: 1px solid transparent;
 }
 
 .alert-success {
-    background-color: #d4edda;
-    color: #155724;
+    background-color: #dff0d8;
+    border-color: #d6e9c6;
+    color: #3c763d;
 }
 
 .alert-danger {
@@ -220,8 +233,15 @@ header h1 {
 }
 
 .alert-info {
-    background-color: #d1ecf1;
-    color: #0c5460;
+    background-color: #d9edf7;
+    border-color: #bce8f1;
+    color: #31708f;
+}
+
+.alert-error {
+    background-color: #f2dede;
+    border-color: #ebccd1;
+    color: #a94442;
 }
 
 /* Dashboard */
@@ -275,6 +295,16 @@ header h1 {
 .slot-occupied {
     background-color: #f8d7da;
     color: #721c24;
+}
+
+.status-available {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.status-occupied {
+    color: #dc3545;
+    font-weight: bold;
 }
 
 /* Hero Section */
@@ -485,4 +515,25 @@ table tr:hover {
 
 .tab-content.active {
     display: block;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    width: 80%;
+    max-width: 500px;
 }

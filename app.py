@@ -352,6 +352,38 @@ def admin_add_slot():
     
     return jsonify({'success': True, 'message': 'Parking slot added successfully'})
 
+@app.route('/api/user-bookings', methods=['GET'])
+def get_user_bookings():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in', 'bookings': []})
+    
+    # Get active bookings (no exit time) for this user
+    bookings = db.session.query(
+        Booking, Vehicle, ParkingSlot
+    ).join(
+        Vehicle, Vehicle.id == Booking.vehicle_id
+    ).join(
+        ParkingSlot, ParkingSlot.id == Booking.slot_id
+    ).filter(
+        Booking.user_id == session['user_id'],
+        Booking.exit_time.is_(None)
+    ).all()
+    
+    bookings_data = [{
+        'id': b.Booking.id,
+        'vehicle_number': b.Vehicle.vehicle_number,
+        'slot_number': b.ParkingSlot.slot_number,
+        'entry_time': b.Booking.entry_time.isoformat()
+    } for b in bookings]
+    
+    return jsonify({'success': True, 'bookings': bookings_data})
+
+# Add logout route for convenience
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+
 # Add this function before "if __name__ == '__main__':" 
 def create_default_admin():
     # Check if admin exists
