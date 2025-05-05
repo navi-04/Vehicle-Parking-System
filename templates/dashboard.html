@@ -3,84 +3,124 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Vehicle Parking System</title>
+    <title>Dashboard - Parking System</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <header class="header">
         <div class="container">
-            <a href="dashboard.html" class="logo">ParkEase</a>
+            <a href="/dashboard" class="logo">ParkEase</a>
             <ul class="nav-links">
-                <li><a href="dashboard.html">Dashboard</a></li>
-                <li><a href="check_in.html">Check In</a></li>
-                <li><a href="admin.html">Admin</a></li>
-                <li><a href="index.html">Logout</a></li>
+                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/check_in">Check In</a></li>
+                <li><a href="/booking">Bookings</a></li>
+                {% if session.get('is_admin') %}
+                <li><a href="/admin">Admin</a></li>
+                {% endif %}
+                <li><a href="/logout">Logout</a></li>
             </ul>
         </div>
     </header>
 
     <div class="container">
-        <!-- Alert messages -->
-        <div class="alert alert-success">
-            You have successfully logged in!
-        </div>
-
-        <h1>Welcome, John!</h1>
-        <p>Current time: <span id="current-time">12:30:45 PM</span></p>
+        <h1>Welcome to ParkEase</h1>
         
-        <div class="card">
-            <div class="card-header">
-                <h2>Your Vehicles</h2>
+        <div class="dashboard-stats">
+            <div class="stat-card">
+                <h3>Parking Availability</h3>
+                <div id="availability-stats">
+                    <div class="stat-item">
+                        <span>Car Slots</span>
+                        <div id="car-slots">Loading...</div>
+                    </div>
+                    <div class="stat-item">
+                        <span>Bike Slots</span>
+                        <div id="bike-slots">Loading...</div>
+                    </div>
+                    <div class="stat-item">
+                        <span>Truck Slots</span>
+                        <div id="truck-slots">Loading...</div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <a href="check_in.html" class="btn btn-success" style="margin-bottom: 15px;">Check In New Vehicle</a>
-                
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>License Plate</th>
-                            <th>Type</th>
-                            <th>Status</th>
-                            <th>Parking Slot</th>
-                            <th>Check-In Time</th>
-                            <th>Check-Out Time</th>
-                            <th>Fee</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>ABC123</td>
-                            <td>Car</td>
-                            <td>
-                                <span style="color: var(--primary-color);">Parked</span>
-                            </td>
-                            <td>A01</td>
-                            <td>2023-07-25 09:30:00</td>
-                            <td>N/A</td>
-                            <td>$0.00</td>
-                            <td>
-                                <a href="check_out.html?id=1" class="btn btn-warning">Check Out</a>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td>XYZ789</td>
-                            <td>SUV</td>
-                            <td>
-                                <span style="color: var(--success-color);">Checked Out</span>
-                            </td>
-                            <td>B03</td>
-                            <td>2023-07-24 14:15:00</td>
-                            <td>2023-07-24 17:45:00</td>
-                            <td>$8.00</td>
-                            <td></td>
-                        </tr>
-                    </tbody>
-                </table>
+        </div>
+        
+        <div class="dashboard-actions">
+            <a href="/check_in" class="btn btn-lg btn-primary">Check In Vehicle</a>
+            <a href="/booking" class="btn btn-lg">View My Bookings</a>
+        </div>
+        
+        <div class="dashboard-bookings">
+            <h2>My Current Bookings</h2>
+            <div id="current-bookings">
+                <p>Loading bookings...</p>
             </div>
         </div>
     </div>
 
-    <script src="/static/js/main.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load parking availability
+            fetch('/api/parking-availability')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('car-slots').textContent = 
+                    `${data.available.car} available out of ${data.total.car}`;
+                    
+                document.getElementById('bike-slots').textContent = 
+                    `${data.available.bike} available out of ${data.total.bike}`;
+                    
+                document.getElementById('truck-slots').textContent = 
+                    `${data.available.truck} available out of ${data.total.truck}`;
+            })
+            .catch(error => {
+                console.error('Error fetching availability data:', error);
+                document.getElementById('car-slots').textContent = 'Error loading data';
+                document.getElementById('bike-slots').textContent = 'Error loading data';
+                document.getElementById('truck-slots').textContent = 'Error loading data';
+            });
+            
+            // Load user's current bookings
+            fetch('/api/user-bookings')
+            .then(response => response.json())
+            .then(data => {
+                const bookingsDiv = document.getElementById('current-bookings');
+                
+                if (!data.success) {
+                    bookingsDiv.innerHTML = '<p>Error loading bookings</p>';
+                    return;
+                }
+                
+                if (data.bookings.length === 0) {
+                    bookingsDiv.innerHTML = '<p>You have no active bookings</p>';
+                    return;
+                }
+                
+                let html = '<table class="table">';
+                html += '<thead><tr><th>Vehicle</th><th>Slot Number</th><th>Entry Time</th><th>Action</th></tr></thead>';
+                html += '<tbody>';
+                
+                data.bookings.forEach(booking => {
+                    const entryTime = new Date(booking.entry_time).toLocaleString();
+                    html += `
+                        <tr>
+                            <td>${booking.vehicle_number}</td>
+                            <td>${booking.slot_number}</td>
+                            <td>${entryTime}</td>
+                            <td><a href="/check_out/${booking.id}" class="btn btn-sm btn-warning">Check Out</a></td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                bookingsDiv.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error loading bookings:', error);
+                document.getElementById('current-bookings').innerHTML = 
+                    '<p>Error loading bookings. Please refresh the page.</p>';
+            });
+        });
+    </script>
 </body>
 </html>

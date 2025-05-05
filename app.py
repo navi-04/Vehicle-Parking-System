@@ -70,6 +70,40 @@ def admin_page():
         return redirect(url_for('login_page'))
     return render_template('admin.html')
 
+@app.route('/check_in')
+def check_in_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
+    return render_template('check_in.html')
+
+@app.route('/check_out/<int:booking_id>')
+def check_out_page(booking_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
+    
+    # Get booking details to display on checkout page
+    booking_info = db.session.query(
+        Booking, Vehicle, ParkingSlot
+    ).join(
+        Vehicle, Vehicle.id == Booking.vehicle_id
+    ).join(
+        ParkingSlot, ParkingSlot.id == Booking.slot_id
+    ).filter(
+        Booking.id == booking_id,
+        Booking.exit_time.is_(None)
+    ).first()
+    
+    if not booking_info:
+        return redirect(url_for('booking_page'))
+    
+    return render_template('check_out.html', booking=booking_info)
+
+@app.route('/dashboard')
+def dashboard_page():
+    if 'user_id' not in session:
+        return redirect(url_for('login_page'))
+    return render_template('dashboard.html')
+
 # API Routes for form submissions
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -106,6 +140,8 @@ def login():
     
     return jsonify({'success': False, 'message': 'Invalid credentials'})
 
+# Update the add-vehicle endpoint to return vehicle_id
+
 @app.route('/api/add-vehicle', methods=['POST'])
 def add_vehicle():
     if 'user_id' not in session:
@@ -122,7 +158,11 @@ def add_vehicle():
     db.session.add(new_vehicle)
     db.session.commit()
     
-    return jsonify({'success': True, 'message': 'Vehicle added successfully'})
+    return jsonify({
+        'success': True, 
+        'message': 'Vehicle added successfully',
+        'vehicle_id': new_vehicle.id
+    })
 
 @app.route('/api/book-slot', methods=['POST'])
 def book_slot():
@@ -351,6 +391,38 @@ def admin_add_slot():
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Parking slot added successfully'})
+
+@app.route('/api/user-bookings', methods=['GET'])
+def get_user_bookings():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'message': 'Not logged in', 'bookings': []})
+    
+    # Get active bookings (no exit time) for this user
+    bookings = db.session.query(
+        Booking, Vehicle, ParkingSlot
+    ).join(
+        Vehicle, Vehicle.id == Booking.vehicle_id
+    ).join(
+        ParkingSlot, ParkingSlot.id == Booking.slot_id
+    ).filter(
+        Booking.user_id == session['user_id'],
+        Booking.exit_time.is_(None)
+    ).all()
+    
+    bookings_data = [{
+        'id': b.Booking.id,
+        'vehicle_number': b.Vehicle.vehicle_number,
+        'slot_number': b.ParkingSlot.slot_number,
+        'entry_time': b.Booking.entry_time.isoformat()
+    } for b in bookings]
+    
+    return jsonify({'success': True, 'bookings': bookings_data})
+
+# Add logout route for convenience
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
 
 # Add this function before "if __name__ == '__main__':" 
 def create_default_admin():

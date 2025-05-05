@@ -7,6 +7,16 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
+    <header class="header">
+        <div class="container">
+            <a href="/" class="logo">ParkEase</a>
+            <ul class="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/logout">Logout</a></li>
+            </ul>
+        </div>
+    </header>
+
     <div class="container">
         <h1>Admin Dashboard</h1>
         
@@ -19,6 +29,7 @@
         
         <div id="bookings" class="tab-content active">
             <h2>Current Bookings</h2>
+            <div id="status-message" style="display: none;"></div>
             <table id="current-bookings">
                 <thead>
                     <tr>
@@ -27,33 +38,40 @@
                         <th>Vehicle</th>
                         <th>Slot</th>
                         <th>Entry Time</th>
+                        <th>Duration</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <!-- Will be populated by JavaScript -->
+                    <tr>
+                        <td colspan="7">Loading bookings...</td>
+                    </tr>
                 </tbody>
             </table>
-            <div id="checkout-form" style="display: none;">
-                <h3>Complete Booking</h3>
-                <form id="completeBookingForm">
-                    <input type="hidden" id="booking-id">
-                    <div class="form-group">
-                        <label for="amount">Amount (₹)</label>
-                        <input type="number" id="amount" name="amount" required>
-                    </div>
-                    <div class="form-group">
-                        <button type="submit">Complete Checkout</button>
-                        <button type="button" onclick="cancelCheckout()">Cancel</button>
-                    </div>
-                </form>
+            <div id="checkout-form" style="display: none;" class="modal">
+                <div class="modal-content">
+                    <h3>Complete Booking</h3>
+                    <form id="completeBookingForm">
+                        <input type="hidden" id="booking-id">
+                        <div class="form-group">
+                            <label for="amount">Amount (₹)</label>
+                            <input type="number" id="amount" name="amount" required>
+                        </div>
+                        <div class="form-group">
+                            <button type="submit" class="btn">Complete Checkout</button>
+                            <button type="button" class="btn btn-secondary" onclick="cancelCheckout()">Cancel</button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
         
         <div id="slots" class="tab-content">
+            <!-- Slots tab content -->
             <h2>Parking Slots</h2>
             <div class="form-group">
-                <button onclick="addNewSlot()">Add New Slot</button>
+                <button onclick="addNewSlot()" class="btn">Add New Slot</button>
             </div>
             <div id="add-slot-form" style="display: none;">
                 <form id="slotForm">
@@ -70,8 +88,8 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <button type="submit">Add Slot</button>
-                        <button type="button" onclick="cancelAddSlot()">Cancel</button>
+                        <button type="submit" class="btn">Add Slot</button>
+                        <button type="button" class="btn btn-secondary" onclick="cancelAddSlot()">Cancel</button>
                     </div>
                 </form>
             </div>
@@ -85,12 +103,15 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Will be populated by JavaScript -->
+                    <tr>
+                        <td colspan="4">Loading slots...</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
         
         <div id="history" class="tab-content">
+            <!-- History tab content -->
             <h2>Booking History</h2>
             <table id="booking-history">
                 <thead>
@@ -106,12 +127,15 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Will be populated by JavaScript -->
+                    <tr>
+                        <td colspan="8">Loading history...</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
         
         <div id="users" class="tab-content">
+            <!-- Users tab content -->
             <h2>User Management</h2>
             <table id="users-table">
                 <thead>
@@ -125,7 +149,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Will be populated by JavaScript -->
+                    <tr>
+                        <td colspan="6">Loading users...</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -141,18 +167,36 @@
         });
         
         function showTab(tabName) {
+            // Hide all tabs
             const tabs = document.querySelectorAll('.tab-content');
             tabs.forEach(tab => {
                 tab.classList.remove('active');
             });
             
+            // Deactivate all tab buttons
             const tabButtons = document.querySelectorAll('.tab-button');
             tabButtons.forEach(button => {
                 button.classList.remove('active');
             });
             
+            // Show selected tab
             document.getElementById(tabName).classList.add('active');
+            
+            // Activate the clicked tab button
             document.querySelector(`.tab-button[onclick="showTab('${tabName}')"]`).classList.add('active');
+        }
+        
+        // Display status message
+        function displayStatusMessage(message, type = 'info') {
+            const statusDiv = document.getElementById('status-message');
+            statusDiv.textContent = message;
+            statusDiv.className = `alert alert-${type}`;
+            statusDiv.style.display = 'block';
+            
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 5000);
         }
         
         function loadCurrentBookings() {
@@ -160,23 +204,47 @@
             .then(response => response.json())
             .then(data => {
                 const tbody = document.querySelector('#current-bookings tbody');
+                
+                if (!data.success) {
+                    tbody.innerHTML = `<tr><td colspan="7">${data.message || 'Error loading bookings'}</td></tr>`;
+                    return;
+                }
+                
+                if (data.bookings.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7">No current bookings</td></tr>';
+                    return;
+                }
+                
                 tbody.innerHTML = '';
                 
                 data.bookings.forEach(booking => {
+                    const entryTime = new Date(booking.entry_time);
+                    const now = new Date();
+                    const diffMs = now - entryTime;
+                    
+                    // Calculate hours and minutes
+                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                    const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                    
+                    const durationText = `${diffHours}h ${diffMinutes}m`;
+                    
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${booking.id}</td>
                         <td>${booking.user_name}</td>
                         <td>${booking.vehicle_number}</td>
                         <td>${booking.slot_number}</td>
-                        <td>${new Date(booking.entry_time).toLocaleString()}</td>
-                        <td><button onclick="initiateCheckout(${booking.id})">Checkout</button></td>
+                        <td>${entryTime.toLocaleString()}</td>
+                        <td>${durationText}</td>
+                        <td><button onclick="initiateCheckout(${booking.id})" class="btn btn-sm">Checkout</button></td>
                     `;
                     tbody.appendChild(row);
                 });
             })
             .catch(error => {
                 console.error('Error loading current bookings:', error);
+                document.querySelector('#current-bookings tbody').innerHTML = 
+                    '<tr><td colspan="7">Error loading bookings. Please refresh the page.</td></tr>';
             });
         }
         
@@ -185,6 +253,17 @@
             .then(response => response.json())
             .then(data => {
                 const tbody = document.querySelector('#parking-slots tbody');
+                
+                if (!data.success) {
+                    tbody.innerHTML = `<tr><td colspan="4">${data.message || 'Error loading slots'}</td></tr>`;
+                    return;
+                }
+                
+                if (data.slots.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4">No parking slots defined</td></tr>';
+                    return;
+                }
+                
                 tbody.innerHTML = '';
                 
                 data.slots.forEach(slot => {
@@ -193,13 +272,16 @@
                         <td>${slot.id}</td>
                         <td>${slot.slot_number}</td>
                         <td>${slot.slot_type}</td>
-                        <td>${slot.is_occupied ? 'Occupied' : 'Available'}</td>
+                        <td>${slot.is_occupied ? '<span class="status-occupied">Occupied</span>' : 
+                            '<span class="status-available">Available</span>'}</td>
                     `;
                     tbody.appendChild(row);
                 });
             })
             .catch(error => {
                 console.error('Error loading parking slots:', error);
+                document.querySelector('#parking-slots tbody').innerHTML = 
+                    '<tr><td colspan="4">Error loading slots. Please refresh the page.</td></tr>';
             });
         }
         
@@ -208,17 +290,31 @@
             .then(response => response.json())
             .then(data => {
                 const tbody = document.querySelector('#booking-history tbody');
+                
+                if (!data.success) {
+                    tbody.innerHTML = `<tr><td colspan="8">${data.message || 'Error loading booking history'}</td></tr>`;
+                    return;
+                }
+                
+                if (data.bookings.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8">No booking history</td></tr>';
+                    return;
+                }
+                
                 tbody.innerHTML = '';
                 
                 data.bookings.forEach(booking => {
+                    const entryTime = new Date(booking.entry_time).toLocaleString();
+                    const exitTime = booking.exit_time ? new Date(booking.exit_time).toLocaleString() : '-';
+                    
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${booking.id}</td>
                         <td>${booking.user_name}</td>
                         <td>${booking.vehicle_number}</td>
                         <td>${booking.slot_number}</td>
-                        <td>${new Date(booking.entry_time).toLocaleString()}</td>
-                        <td>${booking.exit_time ? new Date(booking.exit_time).toLocaleString() : '-'}</td>
+                        <td>${entryTime}</td>
+                        <td>${exitTime}</td>
                         <td>${booking.amount ? `₹${booking.amount}` : '-'}</td>
                         <td>${booking.payment_status}</td>
                     `;
@@ -227,6 +323,8 @@
             })
             .catch(error => {
                 console.error('Error loading booking history:', error);
+                document.querySelector('#booking-history tbody').innerHTML = 
+                    '<tr><td colspan="8">Error loading history. Please refresh the page.</td></tr>';
             });
         }
         
@@ -235,16 +333,29 @@
             .then(response => response.json())
             .then(data => {
                 const tbody = document.querySelector('#users-table tbody');
+                
+                if (!data.success) {
+                    tbody.innerHTML = `<tr><td colspan="6">${data.message || 'Error loading users'}</td></tr>`;
+                    return;
+                }
+                
+                if (data.users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6">No users found</td></tr>';
+                    return;
+                }
+                
                 tbody.innerHTML = '';
                 
                 data.users.forEach(user => {
+                    const createdDate = new Date(user.created_at).toLocaleDateString();
+                    
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${user.id}</td>
                         <td>${user.name}</td>
                         <td>${user.email}</td>
                         <td>${user.phone}</td>
-                        <td>${new Date(user.created_at).toLocaleDateString()}</td>
+                        <td>${createdDate}</td>
                         <td>${user.is_admin ? 'Admin' : 'User'}</td>
                     `;
                     tbody.appendChild(row);
@@ -252,6 +363,8 @@
             })
             .catch(error => {
                 console.error('Error loading users:', error);
+                document.querySelector('#users-table tbody').innerHTML = 
+                    '<tr><td colspan="6">Error loading users. Please refresh the page.</td></tr>';
             });
         }
         
@@ -265,6 +378,7 @@
             document.getElementById('completeBookingForm').reset();
         }
         
+        // Form submission for checkout
         document.getElementById('completeBookingForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -278,23 +392,26 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(formData),
+                credentials: 'include'
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
+                    displayStatusMessage(data.message, 'success');
                     cancelCheckout();
+                    
+                    // Reload the data
                     loadCurrentBookings();
                     loadParkingSlots();
                     loadBookingHistory();
                 } else {
-                    alert(data.message);
+                    displayStatusMessage(data.message || 'Error processing checkout', 'error');
                 }
             })
             .catch(error => {
-                alert('An error occurred. Please try again later.');
                 console.error('Error:', error);
+                displayStatusMessage('An error occurred. Please try again later.', 'error');
             });
         });
         
@@ -307,6 +424,7 @@
             document.getElementById('slotForm').reset();
         }
         
+        // Form submission for adding new slot
         document.getElementById('slotForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -320,21 +438,22 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(formData),
+                credentials: 'include'
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
+                    displayStatusMessage(data.message, 'success');
                     cancelAddSlot();
                     loadParkingSlots();
                 } else {
-                    alert(data.message);
+                    displayStatusMessage(data.message || 'Error adding slot', 'error');
                 }
             })
             .catch(error => {
-                alert('An error occurred. Please try again later.');
                 console.error('Error:', error);
+                displayStatusMessage('An error occurred. Please try again later.', 'error');
             });
         });
     </script>
